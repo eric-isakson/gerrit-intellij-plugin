@@ -565,7 +565,7 @@ public class GerritUtil {
 
         if (!version.isSupported()) {
             Messages.showWarningDialog(project, GitBundle.message("find.git.unsupported.message", version.toString(), GitVersion.MIN),
-                    GitBundle.getString("find.git.success.title"));
+                GitBundle.getString("find.git.success.title"));
             return false;
         }
         return true;
@@ -629,40 +629,22 @@ public class GerritUtil {
         return gerritRestApiFactory.create(gerritAuthData, proxyHttpClientBuilderExtension);
     }
 
-    private double serverVersion = 0.0; // cache for server version which should not change once set over the life of this object, so only look it up once
-
-    private static double parseVersion(String version) {
-        if (version == null || version.length() == 0) {
-            return 0.0;
-        }
-
-        try {
-            final int fd = version.indexOf('.');
-            final int sd = version.indexOf('.', fd + 1);
-            if (0 < sd) {
-                version = version.substring(0, sd);
-            }
-            return Double.parseDouble(version);
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
-    }
-
-    public void getServerVersion(final Project project,
-                                        final Consumer<Double> consumer) {
-        Supplier<Double> supplier = new Supplier<Double>() {
+    public void isChangesStartSupported(final Project project,
+                                        final Consumer<Boolean> consumer) {
+        Supplier<Boolean> supplier = new Supplier<Boolean>() {
             @Override
-            public Double get() {
+            public Boolean get() {
                 try {
-                    if (serverVersion == 0.0) {
-                        serverVersion = parseVersion(gerritClient.config().server().getVersion()); // idempotent, so do not worry about threading issues
-                    }
-                    return serverVersion;
+                    return gerritClient.supportsChangesStart();
                 } catch (RestApiException e) {
                     throw Throwables.propagate(e);
                 }
             }
         };
-        accessGerrit(supplier, consumer, project, "Failed to get gerrit server version.");
+        accessGerrit(supplier, consumer, project, "Failed to determine if server supports start parameter on 'changes' API.");
+    }
+
+    public Changes.QueryRequest updateResumeSortKey(Changes.QueryRequest queryRequest, String sortkey) {
+        return gerritClient.updateResumeSortKey(queryRequest, sortkey);
     }
 }
